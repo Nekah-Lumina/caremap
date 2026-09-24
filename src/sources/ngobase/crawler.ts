@@ -23,6 +23,9 @@ const NATIONAL_START_URL =
 const LAGOS_START_URL =
     'https://' + 'www.ngobase.org/ci/NG.LA.LA/lagos-ngos-charities';
 
+const NIGERIA_MATERNAL_HEALTH_URL =
+    'https://' + 'ngobase.org/cswa/NG/HLT.MT/maternal-health-nigeria';
+
 function matchesHealthArea(
     healthAreas: string[],
     description: string | undefined,
@@ -225,9 +228,15 @@ export async function crawlNgoBase(
 
             const uniqueProfileUrls = [
                 ...new Set(
-                    profileUrls.map((href) =>
-                        new URL(href, url).toString(),
-                    ),
+                    profileUrls.map((href) => {
+                        const normalized = new URL(href, url);
+
+                        if (normalized.hostname === 'ngobase.org') {
+                            normalized.hostname = 'www.ngobase.org';
+                        }
+
+                        return normalized.toString();
+                    }),
                 ),
             ];
 
@@ -276,7 +285,12 @@ export async function crawlNgoBase(
         },
     });
 
-    await crawler.run([startUrl]);
+    const startUrls =
+        healthArea.toLowerCase().trim() === 'maternal health'
+            ? [NIGERIA_MATERNAL_HEALTH_URL, startUrl]
+            : [startUrl];
+
+    await crawler.run(startUrls);
 
     return records.slice(0, maxOrganizations);
 }

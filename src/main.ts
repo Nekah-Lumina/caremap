@@ -7,11 +7,16 @@ import type { CareMapInput } from './types/caremap.js';
 
 await Actor.init();
 
-const input = (await Actor.getInput<CareMapInput>()) ?? {
+const DEFAULT_INPUT: CareMapInput = {
     healthArea: 'maternal health',
     location: 'Lagos',
     maxOrganizations: 25,
     includeEvidence: true,
+};
+
+const input: CareMapInput = {
+    ...DEFAULT_INPUT,
+    ...(await Actor.getInput<Partial<CareMapInput>>()),
 };
 
 log.info('Starting CAREMAP search', {

@@ -73,3 +73,28 @@ export interface CareMapOrganization {
     sourceUrls: string[];
     lastVerifiedAt: string;
 }
+
+export type FacilityType =
+    | 'hospital'
+    | 'clinic'
+    | 'pharmacy'
+    | 'laboratory'
+    | 'imaging_centre'
+    | 'health_centre'
+    | 'other';
+
+export interface CareMapFacility {
+    facilityId: string;
+    name: string;
+    facilityType: FacilityType;
+    description?: string;
+    healthAreas: string[];
+    services: string[];
+    serviceClaims: ServiceClaim[];
+    locations: LocationRecord[];
+    access: AccessInformation;
+    evidence: EvidenceRecord[];
+    evidenceStatus: EvidenceStatus;
+    sourceUrls: string[];
+    lastVerifiedAt: string;
+}
