@@ -51,6 +51,7 @@ function mergeServiceClaims(
             claim: existing.claim || claim.claim,
             evidence,
             evidenceStatus,
+            access: existing.access ?? claim.access,
         });
     }
 

@@ -26,61 +26,104 @@ const LAGOS_START_URL =
 const NIGERIA_MATERNAL_HEALTH_URL =
     'https://' + 'ngobase.org/cswa/NG/HLT.MT/maternal-health-nigeria';
 
-function matchesHealthArea(
-    healthAreas: string[],
-    description: string | undefined,
-    healthArea: string,
-): boolean {
-    const text = `${healthAreas.join(' ')} ${description ?? ''}`.toLowerCase();
-    const query = healthArea.toLowerCase().trim();
+interface HealthAreaAliasConfig {
+    // Multi-word or otherwise specific phrases: safe to match anywhere
+    // (health-area tags or free-text description).
+    strong: string[];
+    // Generic single words that also show up in unrelated contexts
+    // (e.g. "pregnant" describing a hunger-relief org's beneficiaries).
+    // These only count when NGOBase itself tagged the org with that
+    // health area — never from free-text description alone.
+    weak: string[];
+}
 
-    if (!query) return true;
-
-    if (text.includes(query)) return true;
-
-    const aliases: Record<string, string[]> = {
-        'maternal health': [
+const HEALTH_AREA_ALIASES: Record<string, HealthAreaAliasConfig> = {
+    'maternal health': {
+        strong: [
+            'maternal health',
+            'maternal care',
+            'maternal healthcare',
+            'antenatal',
+            'ante-natal',
+            'postnatal',
+            'post-natal',
+            'reproductive health',
+            'sexual and reproductive health',
+            'family planning',
+        ],
+        weak: [
             'maternal',
             'maternity',
             'pregnancy',
             'pregnant',
-            'reproductive health',
-            'sexual and reproductive health',
-            'family planning',
             'women health',
             'women’s health',
             "women's health",
             'childbirth',
-            'antenatal',
-            'postnatal',
         ],
-        'reproductive health': [
-            'reproductive',
+    },
+    'reproductive health': {
+        strong: [
+            'reproductive health',
+            'sexual and reproductive health',
             'family planning',
+        ],
+        weak: [
+            'reproductive',
             'maternal',
             'pregnancy',
             'sexual health',
         ],
-        'child health': [
+    },
+    'child health': {
+        strong: [
             'child health',
-            'children',
-            'childcare',
+            'children health',
+            'child healthcare',
             'paediatric',
             'pediatric',
             'immunization',
             'immunisation',
         ],
-        'mental health': [
+        weak: [
+            'children',
+            'childcare',
+        ],
+    },
+    'mental health': {
+        strong: [
             'mental health',
-            'psychological',
             'psychiatric',
             'psychosocial',
         ],
-    };
+        weak: [
+            'psychological',
+        ],
+    },
+};
 
-    const terms = aliases[query] ?? [query];
+function matchesHealthArea(
+    healthAreas: string[],
+    description: string | undefined,
+    healthArea: string,
+): boolean {
+    const healthAreaText = healthAreas.join(' ').toLowerCase();
+    const fullText = `${healthAreaText} ${description ?? ''}`.toLowerCase();
+    const query = healthArea.toLowerCase().trim();
 
-    return terms.some((term) => text.includes(term));
+    if (!query) return true;
+
+    if (fullText.includes(query)) return true;
+
+    const config = HEALTH_AREA_ALIASES[query];
+
+    if (!config) return false;
+
+    if (config.strong.some((term) => fullText.includes(term))) {
+        return true;
+    }
+
+    return config.weak.some((term) => fullText.includes(term));
 }
 
 export async function crawlNgoBase(

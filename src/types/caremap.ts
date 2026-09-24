@@ -50,11 +50,18 @@ export interface EvidenceRecord {
     status: EvidenceStatus;
 }
 
+export interface ServiceAccessInfo {
+    appointmentRequired?: boolean;
+    referralRequired?: boolean;
+    requirements?: string[];
+}
+
 export interface ServiceClaim {
     service: string;
     claim: string;
     evidence: EvidenceRecord[];
     evidenceStatus: EvidenceStatus;
+    access?: ServiceAccessInfo;
 }
 
 export interface CareMapOrganization {

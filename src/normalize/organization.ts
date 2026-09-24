@@ -104,6 +104,7 @@ function mergeServiceClaims(
             evidenceStatus: independentlyCorroborated
                 ? 'independently_corroborated'
                 : 'source_backed',
+            access: claim.access ?? existing.access,
         });
     }
 
