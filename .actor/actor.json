@@ -1,19 +1,15 @@
 {
-	"$schema": "https://apify.com/schemas/v1/actor.ide.json",
-	"actorSpecification": 1,
-	"name": "caremap",
-	"title": "CAREMAP Healthcare Discovery and Evidence Actor",
-	"description": "Discovers, structures, and evaluates publicly available healthcare organization information for CAREMAP.",
-	"version": "0.0",
-	"buildTag": "latest",
-		"meta": {
-		"templateId": "ts-standby",
-		"generatedBy": "<FILL-IN-MODEL>"
-	},
-	"inputSchema": "./input_schema.json",
-	"outputSchema": "./output_schema.json",
-	"storages": {
-		"dataset": "./dataset_schema.json"
-	},
-	"dockerfile": "../Dockerfile"
+  "$schema": "https://apify.com/schemas/v1/actor.ide.json",
+  "actorSpecification": 1,
+  "name": "caremap",
+  "title": "CAREMAP Healthcare Discovery and Evidence Actor",
+  "description": "Discovers, structures, and evaluates publicly available healthcare organization information for CAREMAP.",
+  "version": "0.1",
+  "buildTag": "latest",
+  "inputSchema": "./input_schema.json",
+  "outputSchema": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "dockerfile": "../Dockerfile"
 }
