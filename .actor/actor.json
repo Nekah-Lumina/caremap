@@ -2,12 +2,11 @@
 	"$schema": "https://apify.com/schemas/v1/actor.ide.json",
 	"actorSpecification": 1,
 	"name": "caremap",
-	"title": "Standby Actor in TypeScript",
-	"description": "Standby Actor in TypeScript.",
+	"title": "CAREMAP Healthcare Discovery and Evidence Actor",
+	"description": "Discovers, structures, and evaluates publicly available healthcare organization information for CAREMAP.",
 	"version": "0.0",
 	"buildTag": "latest",
-	"usesStandbyMode": true,
-	"meta": {
+		"meta": {
 		"templateId": "ts-standby",
 		"generatedBy": "<FILL-IN-MODEL>"
 	},

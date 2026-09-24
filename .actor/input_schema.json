@@ -1,8 +1,42 @@
 {
     "$schema": "https://apify.com/schemas/v1/input.ide.json",
-    "title": "Actor input",
+    "title": "CAREMAP input",
     "type": "object",
     "schemaVersion": 1,
-    "properties": {},
-    "required": []
+    "properties": {
+        "healthArea": {
+            "title": "Health area",
+            "type": "string",
+            "description": "The health area to search for, such as maternal health, reproductive health, child health, or mental health.",
+            "editor": "textfield",
+            "default": "maternal health"
+        },
+        "location": {
+            "title": "Location",
+            "type": "string",
+            "description": "The Nigerian state, city, or other geographic area to focus on.",
+            "editor": "textfield",
+            "default": "Lagos"
+        },
+        "maxOrganizations": {
+            "title": "Maximum organizations",
+            "type": "integer",
+            "description": "Maximum number of organization records to return.",
+            "editor": "number",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 100
+        },
+        "includeEvidence": {
+            "title": "Include evidence",
+            "type": "boolean",
+            "description": "Collect publicly available source information supporting organization and service claims.",
+            "editor": "checkbox",
+            "default": true
+        }
+    },
+    "required": [
+        "healthArea",
+        "location"
+    ]
 }
