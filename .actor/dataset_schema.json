@@ -2,82 +2,85 @@
   "$schema": "https://nginx.apify.com/schemas/v1/dataset.ide.json",
   "actorSpecification": 1,
   "fields": {
-    "organizationId": {
-      "title": "Organization ID",
-      "type": "string"
-    },
-    "name": {
-      "title": "Organization name",
-      "type": "string"
-    },
-    "organizationType": {
-      "title": "Organization type",
-      "type": "string"
-    },
-    "description": {
-      "title": "Description",
-      "type": "string"
-    },
-    "healthAreas": {
-      "title": "Health areas",
-      "type": "array",
-      "items": {
+    "type": "object",
+    "properties": {
+      "organizationId": {
+        "title": "Organization ID",
         "type": "string"
-      }
-    },
-    "services": {
-      "title": "Services",
-      "type": "array",
-      "items": {
+      },
+      "name": {
+        "title": "Organization name",
         "type": "string"
-      }
-    },
-    "serviceClaims": {
-      "title": "Service claims",
-      "type": "array",
-      "items": {
+      },
+      "organizationType": {
+        "title": "Organization type",
+        "type": "string"
+      },
+      "description": {
+        "title": "Description",
+        "type": "string"
+      },
+      "healthAreas": {
+        "title": "Health areas",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "services": {
+        "title": "Services",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "serviceClaims": {
+        "title": "Service claims",
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "targetPopulation": {
+        "title": "Target population",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "locations": {
+        "title": "Locations",
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "access": {
+        "title": "Access information",
         "type": "object"
-      }
-    },
-    "targetPopulation": {
-      "title": "Target population",
-      "type": "array",
-      "items": {
+      },
+      "evidence": {
+        "title": "Evidence records",
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "evidenceStatus": {
+        "title": "Evidence status",
+        "type": "string"
+      },
+      "sourceUrls": {
+        "title": "Source URLs",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "lastVerifiedAt": {
+        "title": "Last verified at",
         "type": "string"
       }
-    },
-    "locations": {
-      "title": "Locations",
-      "type": "array",
-      "items": {
-        "type": "object"
-      }
-    },
-    "access": {
-      "title": "Access information",
-      "type": "object"
-    },
-    "evidence": {
-      "title": "Evidence records",
-      "type": "array",
-      "items": {
-        "type": "object"
-      }
-    },
-    "evidenceStatus": {
-      "title": "Evidence status",
-      "type": "string"
-    },
-    "sourceUrls": {
-      "title": "Source URLs",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "lastVerifiedAt": {
-      "title": "Last verified at",
-      "type": "string"
     }
   },
   "views": {
