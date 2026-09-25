@@ -128,7 +128,11 @@ Input:
 Health area: maternal health
 Location: Lagos
 Maximum organizations: 25
-Include evidence: trueOrganization:
+Include evidence: true
+
+Output example:
+
+Organization:
 The Wellbeing Foundation Africa
 
 Health areas:
@@ -152,8 +156,11 @@ Evidence:
 Evidence status:
 source_backed
 or
-independently_corroboratedExact results depend on the public information 
+independently_corroborated
+
+Exact results depend on the public information 
 available at the time of the run.
+```
 
 Actor inputs
 healthArea
