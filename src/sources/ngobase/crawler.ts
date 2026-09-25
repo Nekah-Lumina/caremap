@@ -18,13 +18,13 @@ export interface NgoBaseRecord {
 }
 
 const NATIONAL_START_URL =
-    'https://' + 'ngobase.org/cwa/NG/HLT/health-ngos-charities-nigeria';
+    'https://' + 'www.ngobase.org/cwa/NG/HLT/health-ngos-charities-nigeria';
 
 const LAGOS_START_URL =
     'https://' + 'www.ngobase.org/ci/NG.LA.LA/lagos-ngos-charities';
 
 const NIGERIA_MATERNAL_HEALTH_URL =
-    'https://' + 'ngobase.org/cswa/NG/HLT.MT/maternal-health-nigeria';
+    'https://' + 'www.ngobase.org/cswa/NG/HLT.MT/maternal-health-nigeria';
 
 interface HealthAreaAliasConfig {
     // Multi-word or otherwise specific phrases: safe to match anywhere
@@ -295,6 +295,13 @@ export async function crawlNgoBase(
                         remainingCandidates,
                     ),
                     label: 'PROFILE',
+                    // Crawlee's default strategy ('same-hostname') treats
+                    // ngobase.org and www.ngobase.org as different hosts
+                    // and silently drops cross-host links. 'same-domain'
+                    // matches on the registrable domain regardless of the
+                    // www subdomain, so this can't silently return zero
+                    // results again if a bare-hostname URL shows up.
+                    strategy: 'same-domain',
                 });
 
                 const nextPage = $('a[href*="page="]')
@@ -317,6 +324,7 @@ export async function crawlNgoBase(
                     await enqueueLinks({
                         urls: [nextPage],
                         label: 'CATEGORY',
+                        strategy: 'same-domain',
                     });
                 }
             }
