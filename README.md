@@ -166,6 +166,31 @@ services) are matched against the closest real category plus text/alias
 matching, so results for those areas should be treated as a starting point
 rather than an exact tag match.
 
+## Supported locations
+ 
+The `location` input accepts (case-insensitive) these Nigerian states,
+which currently have a dedicated NGOBase state-level listing:
+ 
+- Lagos
+- Borno
+- Edo
+- Federal Capital Territory (also accepts "FCT" or "Abuja")
+- Kano State (also accepts "Kano")
+- Oyo (also accepts "Ibadan")
+- Rivers (also accepts "Port Harcourt")
+- Taraba
+These are the only Nigerian states NGOBase currently indexes any NGOs for
+at all, not a CAREMAP-side restriction, but a reflection of NGOBase's own
+coverage.
+ 
+Any other location (a different state, a city, or a free-text area) is
+still accepted and CAREMAP falls back to NGOBase's single national Nigeria
+Health listing and filters results by text-matching the location against
+each organization's stated city, state, and country. This tends to
+produce sparser, less targeted results than a location on the list above,
+since it depends on the organization's profile mentioning that location
+by name rather than being indexed under a matching state page.
+
 ## When no NGOs are found
 
 A health area and location search can legitimately come back with zero
