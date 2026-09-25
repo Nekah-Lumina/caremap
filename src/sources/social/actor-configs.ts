@@ -3,44 +3,37 @@
  * priority order, the first one that runs successfully and returns items
  * wins; if it fails or returns nothing, the next one in the list is tried.
  *
- * FIELD NAMES BELOW HAVE NOW BEEN VERIFIED AGAINST REAL SAMPLE OUTPUT for
+ * FIELD NAMES BELOW HAVE BEEN VERIFIED AGAINST REAL SAMPLE OUTPUT for
  * `danek/twitter-scraper` and `scraper_one/facebook-posts-search` (the two
- * actors that were actually reachable on the account's plan). The earlier
- * version of this file guessed field names for both and guessed wrong:
+ * actors that are actually reachable on the account's plan).
  *
  * - `scraper_one/facebook-posts-search` actually returns `postText` (not
  *   `text`/`content`/`message`), and `timestamp` as an epoch-millisecond
  *   NUMBER (not a `publicationDate`/`date` string) — so even matching the
  *   field name alone wasn't enough, the value also needed converting.
  *   `author` is a nested object ({name, profileUrl, ...}), not a flat
- *   string field. This is why the Sep 25 run logged the Facebook search as
- *   "succeeded" with 5 results, but every one of those results had an
- *   empty `evidenceSnippet` in the final output — the mapping silently
- *   produced blanks instead of throwing.
+ *   string field.
  *
  * - `danek/twitter-scraper` returns tweet objects with `text`, `author`
  *   (nested: `screen_name`, `name`), `created_at`, and `tweet_id` — but
- *   NO `url`/`tweetUrl` field at all, so the old mapping's `url: ''`
- *   caused every mapped item to be dropped by `.filter(r => r.url)`.
- *   The real bug is worse than a field-name miss, though: a sample run
- *   searching for "Lagos Food Bank Initiative (LFBI)" returned Elon
- *   Musk's own tweet timeline — completely unrelated to the query. That
- *   means this actor's `query`/`search_type`/`max_posts` input is not
- *   actually being honored as a keyword search by the actor (or the
- *   account's plan silently falls back to a default/example run). The
- *   fields below are still the best-documented guess for this actor's
- *   input, but MUST NOT be trusted to scope results — see the relevance
- *   filter in crawler.ts's runWithFallback, which now rejects mapped
- *   items that don't actually mention the organization's name. That
- *   filter is what actually prevents fabricated evidence, independent of
- *   whether this input mapping is eventually confirmed correct.
+ *   NO `url`/`tweetUrl` field at all, so the URL has to be constructed
+ *   from the id + handle. The id itself can come back as a number rather
+ *   than a string (see `idField` below). A sample run also showed this
+ *   actor's `query`/`search_type`/`max_posts` input is NOT reliably
+ *   honored as a keyword search (one run returned Elon Musk's own
+ *   timeline for an unrelated query) — the relevance filter in
+ *   crawler.ts's runWithFallback is what actually prevents that from
+ *   turning into fabricated evidence, independent of whether this
+ *   actor's input mapping is eventually confirmed correct.
  *
- * The other Twitter Actors (`apidojo/tweet-scraper`,
- * `apidojo/twitter-scraper-lite`) never returned real output to verify
- * against (both failed with "Access to this origin is disabled" — a
- * platform-level block on this account, not a mapping bug), so their
- * mapItems stay defensive/best-effort and rely on the same relevance
- * filter as a safety net.
+ * `apidojo/tweet-scraper` and `apidojo/twitter-scraper-lite` were removed
+ * from TWITTER_SEARCH_ACTORS below: both consistently fail with "Access
+ * to this origin is disabled" on this account's plan (a platform-level
+ * restriction, not a mapping bug), and every failed attempt still costs
+ * real run time before falling through to the next actor in the chain.
+ * If the account is upgraded to a plan that can reach them, they can be
+ * added back, the same defensive mapItems approach used for
+ * danek/twitter-scraper would apply.
  */
 
 export interface SocialSearchResult {
@@ -102,6 +95,26 @@ const authorNameField = (item: Record<string, unknown>, ...flatKeys: string[]): 
 };
 
 /**
+ * Same lookup as genericTextField, but also accepts a numeric ID and
+ * coerces it to a string. Tweet/post IDs from these actors aren't
+ * guaranteed to come back as strings, and genericTextField's
+ * `typeof value === 'string'` guard silently skips a numeric id no matter
+ * what key it's under — which would make twitterUrlField() below return
+ * '' for every item even when the actor did return a usable id, and every
+ * mapped item then gets dropped by `.filter(r => r.url)`.
+ */
+const idField = (item: Record<string, unknown>, ...keys: string[]): string | undefined => {
+    for (const key of keys) {
+        const value = item[key];
+
+        if (typeof value === 'string' && value.trim()) return value;
+
+        if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    }
+    return undefined;
+};
+
+/**
  * Twitter/X post objects from these actors don't reliably include a
  * ready-made post URL (confirmed absent in the danek/twitter-scraper
  * sample). Falls back to constructing one from the tweet id + handle,
@@ -111,7 +124,7 @@ const twitterUrlField = (item: Record<string, unknown>): string => {
     const direct = genericTextField(item, 'url', 'tweetUrl', 'twitterUrl');
     if (direct) return direct;
 
-    const id = genericTextField(item, 'tweet_id', 'id_str', 'id', 'rest_id');
+    const id = idField(item, 'tweet_id', 'id_str', 'id', 'rest_id');
     const author = item.author;
     const handle =
         author && typeof author === 'object'
@@ -153,40 +166,6 @@ export const FACEBOOK_SEARCH_ACTORS: SocialActorConfig[] = [
 ];
 
 export const TWITTER_SEARCH_ACTORS: SocialActorConfig[] = [
-    {
-        actorId: 'apidojo/tweet-scraper',
-        buildInput: (query, maxResults) => ({
-            searchTerms: [query],
-            maxItems: maxResults,
-            sort: 'Latest',
-        }),
-        mapItems: (items) =>
-            items
-                .map((item) => ({
-                    url: twitterUrlField(item),
-                    snippet: genericTextField(item, 'text', 'fullText', 'full_text') ?? '',
-                    author: authorNameField(item, 'author', 'username'),
-                    postedAt: dateField(item, 'createdAt', 'created_at', 'date'),
-                }))
-                .filter((r) => r.url),
-    },
-    {
-        actorId: 'apidojo/twitter-scraper-lite',
-        buildInput: (query, maxResults) => ({
-            searchTerms: [query],
-            sort: 'Latest',
-            maxItems: maxResults,
-        }),
-        mapItems: (items) =>
-            items
-                .map((item) => ({
-                    url: twitterUrlField(item),
-                    snippet: genericTextField(item, 'text', 'fullText', 'full_text') ?? '',
-                    author: authorNameField(item, 'author', 'username'),
-                    postedAt: dateField(item, 'createdAt', 'created_at', 'date'),
-                }))
-                .filter((r) => r.url),
-    },
     {
         actorId: 'danek/twitter-scraper',
         // Verified fields: `query` (single string, not an array) and

@@ -2,12 +2,13 @@
 
 ## Healthcare discovery with evidence, not just listings
 
-CAREMAP discovers healthcare organizations and services from public 
+CAREMAP discovers non-governmental organizations in nigeria that offers free or 
+subsidized healthcare services from public 
 sources, then structures the evidence behind those claims.
 
 Instead of simply saying:
 
-> "This organization provides maternal health services."
+> "This non-governmental organization provides maternal health services."
 
 CAREMAP helps answer:
 
@@ -16,7 +17,7 @@ located, how can people access it, and what evidence supports the claim?"
 
 ## Why CAREMAP exists
 
-Healthcare information is scattered across organization websites, 
+Healthcare information about services provided by non-governmental organizatons in nigeria is scattered across organization websites, 
 directories, program pages, announcements, and other public sources.
 
 A directory can tell you that an organization exists.
