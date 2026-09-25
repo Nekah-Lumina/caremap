@@ -12,6 +12,7 @@ const DEFAULT_INPUT: CareMapInput = {
     location: 'Lagos',
     maxOrganizations: 25,
     includeEvidence: true,
+    includeSocialEvidence: false,
 };
 
 const input: CareMapInput = {
@@ -24,6 +25,7 @@ log.info('Starting CAREMAP search', {
     location: input.location,
     maxOrganizations: input.maxOrganizations,
     includeEvidence: input.includeEvidence,
+    includeSocialEvidence: input.includeSocialEvidence,
 });
 
 try {
@@ -35,7 +37,11 @@ try {
 
     const normalizedOrganizations = await Promise.all(
         sourceRecords.map((record) =>
-            normalizeNgoBaseRecord(record, input.includeEvidence),
+            normalizeNgoBaseRecord(
+                record,
+                input.includeEvidence,
+                input.includeSocialEvidence,
+            ),
         ),
     );
 
@@ -44,7 +50,16 @@ try {
     );
 
     for (const organization of aggregation.organizations) {
-        await Actor.pushData(organization);
+        const chargeResult = await Actor.charge({ eventName: 'organization-found' });
+
+        if (!chargeResult.eventChargeLimitReached) {
+            await Actor.pushData(organization);
+        } else {
+            log.warning('User charge limit reached, stopping before further organizations are produced', {
+                organizationsProducedSoFar: aggregation.organizations.indexOf(organization),
+            });
+            break;
+        }
     }
 
     log.info('CAREMAP run completed', {

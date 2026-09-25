@@ -155,7 +155,7 @@ function findServiceEvidence(
 
         const snippet = text
             .slice(start, end)
-            .replace(/\\s+/g, ' ')
+            .replace(/\s+/g, ' ')
             .trim();
 
         results.set(service, snippet);

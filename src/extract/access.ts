@@ -29,8 +29,14 @@ const REQUIREMENT_PATTERNS: Array<{
         type: 'referralRequired',
         patterns: [
             /\breferral required\b/i,
-            /\brefer(?:ral|red)?\b/i,
+            /\breferral is required\b/i,
+            /\brequires? a referral\b/i,
+            /\bneeds? a referral\b/i,
+            /\bwith a referral\b/i,
             /\bdoctor'?s referral\b/i,
+            /\bphysician referral\b/i,
+            /\bgp referral\b/i,
+            /\bletter of referral\b/i,
         ],
     },
 ];

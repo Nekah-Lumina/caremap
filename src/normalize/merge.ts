@@ -1,5 +1,6 @@
 import type {
     CareMapOrganization,
+    ConflictRecord,
     EvidenceStatus,
     ServiceClaim,
 } from '../types/caremap.js';
@@ -58,6 +59,55 @@ function mergeServiceClaims(
     return [...merged.values()];
 }
 
+function describeRequirement(value: boolean | undefined): string {
+    if (value === undefined) return 'not stated';
+    return value ? 'required' : 'not required';
+}
+
+// Compares the two records' own access fields (not any conflicts they
+// already carry from earlier merges) and returns one ConflictRecord per
+// field where both sources state a value and those values disagree.
+function detectAccessConflicts(
+    first: CareMapOrganization,
+    second: CareMapOrganization,
+): ConflictRecord[] {
+    const conflicts: ConflictRecord[] = [];
+
+    if (
+        first.access.appointmentRequired !== undefined &&
+        second.access.appointmentRequired !== undefined &&
+        first.access.appointmentRequired !==
+            second.access.appointmentRequired
+    ) {
+        conflicts.push({
+            field: 'appointmentRequired',
+            description: `One source says an appointment is ${describeRequirement(
+                first.access.appointmentRequired,
+            )}, another source says it is ${describeRequirement(
+                second.access.appointmentRequired,
+            )}.`,
+        });
+    }
+
+    if (
+        first.access.referralRequired !== undefined &&
+        second.access.referralRequired !== undefined &&
+        first.access.referralRequired !==
+            second.access.referralRequired
+    ) {
+        conflicts.push({
+            field: 'referralRequired',
+            description: `One source says a referral is ${describeRequirement(
+                first.access.referralRequired,
+            )}, another source says it is ${describeRequirement(
+                second.access.referralRequired,
+            )}.`,
+        });
+    }
+
+    return conflicts;
+}
+
 export function mergeOrganizations(
     first: CareMapOrganization,
     second: CareMapOrganization,
@@ -109,17 +159,14 @@ export function mergeOrganizations(
             ),
     );
 
-    const conflictingAccess =
-        first.access.appointmentRequired !== undefined &&
-        second.access.appointmentRequired !== undefined &&
-        first.access.appointmentRequired !==
-            second.access.appointmentRequired;
-
-    const conflictingReferral =
-        first.access.referralRequired !== undefined &&
-        second.access.referralRequired !== undefined &&
-        first.access.referralRequired !==
-            second.access.referralRequired;
+    // Both records may already carry conflicts found in an earlier merge
+    // (e.g. when a third duplicate is folded in later), so those are kept
+    // alongside anything new found between `first` and `second` here.
+    const conflicts: ConflictRecord[] = [
+        ...first.conflicts,
+        ...second.conflicts,
+        ...detectAccessConflicts(first, second),
+    ];
 
     return {
         ...first,
@@ -152,8 +199,9 @@ export function mergeOrganizations(
             ]),
         },
         evidence,
+        conflicts,
         evidenceStatus:
-            conflictingAccess || conflictingReferral
+            conflicts.length > 0
                 ? 'conflicting'
                 : evidence.length > 0
                   ? 'source_backed'

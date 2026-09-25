@@ -18,6 +18,7 @@ export interface CareMapInput {
     location: string;
     maxOrganizations: number;
     includeEvidence: boolean;
+    includeSocialEvidence: boolean;
 }
 
 export interface LocationRecord {
@@ -64,6 +65,14 @@ export interface ServiceClaim {
     access?: ServiceAccessInfo;
 }
 
+// Records a disagreement found while merging two records of the same
+// organization, so the conflict is visible on the record instead of one
+// value silently overwriting the other.
+export interface ConflictRecord {
+    field: string;
+    description: string;
+}
+
 export interface CareMapOrganization {
     organizationId: string;
     name: string;
@@ -77,6 +86,7 @@ export interface CareMapOrganization {
     access: AccessInformation;
     evidence: EvidenceRecord[];
     evidenceStatus: EvidenceStatus;
+    conflicts: ConflictRecord[];
     sourceUrls: string[];
     lastVerifiedAt: string;
 }

@@ -8,6 +8,7 @@ import type {
 
 import type { NgoBaseRecord } from '../sources/ngobase/crawler.js';
 import { crawlOfficialWebsiteEvidence } from '../sources/official-website/crawler.js';
+import { getSocialEvidence } from '../sources/social/crawler.js';
 import type { ExtractedAccess } from '../extract/access.js';
 import {
     extractServices,
@@ -124,6 +125,10 @@ function determineOrganizationEvidenceStatus(
 export async function normalizeNgoBaseRecord(
     record: NgoBaseRecord,
     includeEvidence = true,
+    // Off by default: each org with this on triggers extra Apify Actor
+    // calls (Facebook/Twitter/Instagram), which adds real run time and
+    // cost on top of the directory + website crawl. Turn on deliberately.
+    includeSocialEvidence = false,
 ): Promise<CareMapOrganization> {
     const checkedAt = record.checkedAt;
 
@@ -188,9 +193,23 @@ export async function normalizeNgoBaseRecord(
         websiteAccess = websiteResult.access;
     }
 
+    // Official-page lookup only runs when NGOBase already gave us a
+    // Facebook URL; mention search runs regardless, using the org's name.
+    // See src/sources/social/crawler.ts for the tier distinction.
+    const socialEvidence =
+        includeEvidence && includeSocialEvidence
+            ? await getSocialEvidence(
+                  record.name,
+                  checkedAt,
+                  record.facebook,
+                  undefined,
+              )
+            : [];
+
     const evidence = [
         ...directoryEvidence,
         ...websiteEvidence,
+        ...socialEvidence,
     ];
 
     const serviceClaims = mergeServiceClaims(
@@ -229,6 +248,7 @@ export async function normalizeNgoBaseRecord(
         evidence,
         evidenceStatus:
             determineOrganizationEvidenceStatus(evidence),
+        conflicts: [],
         sourceUrls: [
             record.sourceUrl,
             ...(record.website ? [record.website] : []),

@@ -33,6 +33,13 @@
             "description": "Collect publicly available source information supporting organization and service claims.",
             "editor": "checkbox",
             "default": true
+        },
+        "includeSocialEvidence": {
+            "title": "Include social media evidence",
+            "type": "boolean",
+            "description": "Search Facebook, X/Twitter, and Instagram for each organization's official page and public mentions. This runs extra Apify Actors per organization, so it increases run time and cost. Off by default.",
+            "editor": "checkbox",
+            "default": false
         }
     },
     "required": [

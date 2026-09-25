@@ -1,5 +1,5 @@
 {
-  "$schema": "https://nginx.apify.com/schemas/v1/dataset.ide.json",
+  "$schema": "https://apify.com/schemas/v1/dataset.ide.json",
   "actorSpecification": 1,
   "fields": {
     "type": "object",
@@ -70,6 +70,13 @@
         "title": "Evidence status",
         "type": "string"
       },
+      "conflicts": {
+        "title": "Conflicting information",
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
       "sourceUrls": {
         "title": "Source URLs",
         "type": "array",
@@ -96,6 +103,7 @@
           "serviceClaims",
           "locations",
           "evidenceStatus",
+          "conflicts",
           "lastVerifiedAt"
         ]
       },
