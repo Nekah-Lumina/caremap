@@ -236,16 +236,16 @@ available at the time of the run.
 ## Screenshots
 
 ### Actor input
-![CAREMAP Actor input](screenshots/caremap-input.png)
-
+![CAREMAP Actor input](https://raw.githubusercontent.com/Nekah-Lumina/caremap/main/screenshots/caremap-input.png)
+ 
 ### Successful run
-![CAREMAP successful run](screenshots/caremap-run-success.png)
-
+![CAREMAP successful run](https://raw.githubusercontent.com/Nekah-Lumina/caremap/main/screenshots/caremap-run-success.png)
+ 
 ### Structured output
-![CAREMAP structured output](screenshots/caremap-output.png)
-
+![CAREMAP structured output](https://raw.githubusercontent.com/Nekah-Lumina/caremap/main/screenshots/caremap-output.png)
+ 
 ### Published Actor
-![CAREMAP published Actor](screenshots/caremap-actor-page.png)
+![CAREMAP published Actor](https://raw.githubusercontent.com/Nekah-Lumina/caremap/main/screenshots/caremap-actor-page.png)
 
 ## Actor inputs
 
