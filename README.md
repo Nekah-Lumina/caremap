@@ -387,8 +387,8 @@ information.
 
 CAREMAP is built with:
 
-- Apify Actors
-- Crawlee
+- Apify Actors (`danek/twitter-scraper` for x(twitter) search and `scraper_one/facebook-posts-search` for facebook posts search)
+- Crawlee (For NGObase search)
 - TypeScript
 - Node.js
 - Structured dataset outputs
