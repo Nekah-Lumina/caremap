@@ -12,6 +12,7 @@ export interface NgoBaseRecord {
     };
     website?: string;
     facebook?: string;
+    instagram?: string;
     sourceUrl: string;
     sourceType: 'directory';
     checkedAt: string;
@@ -20,11 +21,77 @@ export interface NgoBaseRecord {
 const NATIONAL_START_URL =
     'https://' + 'www.ngobase.org/cwa/NG/HLT/health-ngos-charities-nigeria';
 
-const LAGOS_START_URL =
-    'https://' + 'www.ngobase.org/ci/NG.LA.LA/lagos-ngos-charities';
-
 const NIGERIA_MATERNAL_HEALTH_URL =
     'https://' + 'www.ngobase.org/cswa/NG/HLT.MT/maternal-health-nigeria';
+
+/**
+ * Real NGOBase state-listing URLs, confirmed live against
+ * ngobase.org/c/NG/nigeria-ngos-charities (its "States" list — the only
+ * Nigerian states NGOBase currently indexes any NGOs for). Previously only
+ * "lagos" had a real code path here; every other location silently fell
+ * back to the single national listing page and had to survive there. Lagos
+ * keeps its existing city-level URL (`/ci/NG.LA.LA/...`), which was already
+ * verified to return results; the rest use NGOBase's state-level `/st/...`
+ * listing, the broadest page it exposes for them. Common aliases (e.g.
+ * "Abuja" for Federal Capital Territory, "Port Harcourt" for Rivers) are
+ * included so the person doesn't have to know NGOBase's exact state name.
+ */
+const STATE_LISTING_URLS: Record<string, string> = {
+    lagos: 'https://www.ngobase.org/ci/NG.LA.LA/lagos-ngos-charities',
+    borno: 'https://www.ngobase.org/st/NG.BO/borno-ngos-charities',
+    edo: 'https://www.ngobase.org/st/NG.ED/edo-ngos-charities',
+    'federal capital territory': 'https://www.ngobase.org/st/NG.FCT/federal-capital-territory-ngos-charities',
+    fct: 'https://www.ngobase.org/st/NG.FCT/federal-capital-territory-ngos-charities',
+    abuja: 'https://www.ngobase.org/st/NG.FCT/federal-capital-territory-ngos-charities',
+    'kano state': 'https://www.ngobase.org/st/NG.KA/kano-state-ngos-charities',
+    kano: 'https://www.ngobase.org/st/NG.KA/kano-state-ngos-charities',
+    oyo: 'https://www.ngobase.org/st/NG.OY/oyo-ngos-charities',
+    ibadan: 'https://www.ngobase.org/st/NG.OY/oyo-ngos-charities',
+    rivers: 'https://www.ngobase.org/st/NG.RI/rivers-ngos-charities',
+    'port harcourt': 'https://www.ngobase.org/st/NG.RI/rivers-ngos-charities',
+    taraba: 'https://www.ngobase.org/st/NG.TA/taraba-ngos-charities',
+};
+
+/**
+ * Real NGOBase Nigeria health-category URLs, confirmed live against
+ * ngobase.org/cwa/NG/HLT/health-ngos-charities-nigeria. Previously only the
+ * exact string "maternal health" had a category seed URL; every other
+ * health area (including ones with alias configs just below, like
+ * "reproductive health" and "child health") got none at all and relied
+ * entirely on the generic national listing plus text filtering.
+ *
+ * NGOBase does not have a dedicated category for every health area CAREMAP
+ * might be asked for — there is no standalone "reproductive health",
+ * "family planning", or "child health" category in its actual taxonomy as
+ * of writing. Where no exact category exists, this maps to the closest
+ * real one rather than seeding nothing, and that choice is called out in
+ * each comment below so it's easy to correct if NGOBase adds a better
+ * category later.
+ */
+const HEALTH_AREA_CATEGORY_URLS: Record<string, string> = {
+    'maternal health': NIGERIA_MATERNAL_HEALTH_URL,
+    'mental health': 'https://www.ngobase.org/cswa/NG/HLT.MN/mental-health-nigeria',
+    'population welfare': 'https://www.ngobase.org/cswa/NG/HLT.PP/population-welfare-nigeria',
+    // No standalone category exists — Maternal Health is the closest real
+    // NGOBase category for reproductive-health-focused orgs.
+    'reproductive health': NIGERIA_MATERNAL_HEALTH_URL,
+    // No standalone category exists — Population Welfare is the closest
+    // real NGOBase category for family-planning-focused orgs.
+    'family planning': 'https://www.ngobase.org/cswa/NG/HLT.PP/population-welfare-nigeria',
+    wash: 'https://www.ngobase.org/cswa/NG/HLT.WS/wash-nigeria',
+    'disability support': 'https://www.ngobase.org/cswa/NG/HLT.DS/disability-support-nigeria',
+    'malaria': 'https://www.ngobase.org/cswa/NG/HLT.MP/malaria-and-dengue-prevention-nigeria',
+    hiv: 'https://www.ngobase.org/cswa/NG/SDS.HI/hiv-aids-nigeria',
+    'hiv aids': 'https://www.ngobase.org/cswa/NG/SDS.HI/hiv-aids-nigeria',
+    'hiv/aids': 'https://www.ngobase.org/cswa/NG/SDS.HI/hiv-aids-nigeria',
+    nutrition: 'https://www.ngobase.org/cswa/NG/PVA.HF/hunger,-food-insecurity-nigeria',
+    hunger: 'https://www.ngobase.org/cswa/NG/PVA.HF/hunger,-food-insecurity-nigeria',
+    // NGOBase's Health work area has no child-health category as such;
+    // the closest real category ("Child Rights and Welfare") sits under
+    // its Rights work area instead, so results here skew toward
+    // rights/advocacy orgs rather than pediatric-care providers.
+    'child health': 'https://www.ngobase.org/cswa/NG/RGT.CH/child-rights-and-welfare-nigeria',
+};
 
 interface HealthAreaAliasConfig {
     // Multi-word or otherwise specific phrases: safe to match anywhere
@@ -136,21 +203,27 @@ export async function crawlNgoBase(
     const processedProfiles = new Set<string>();
 
     const normalizedLocation = location.toLowerCase().trim();
-    const startUrl =
-        normalizedLocation === 'lagos'
-            ? LAGOS_START_URL
-            : NATIONAL_START_URL;
+    const startUrl = STATE_LISTING_URLS[normalizedLocation] ?? NATIONAL_START_URL;
 
-    const discoveryLimit = Math.max(maxOrganizations * 3, 30);
+    const normalizedHealthArea = healthArea.toLowerCase().trim();
+    const healthAreaCategoryUrl = HEALTH_AREA_CATEGORY_URLS[normalizedHealthArea];
+
+    const discoveryLimit = Math.max(maxOrganizations * 4, 40);
 
     const crawler = new CheerioCrawler({
         maxConcurrency: 2,
         maxRequestRetries: 2,
         requestHandlerTimeoutSecs: 30,
-        maxRequestsPerCrawl: Math.max(
-            Math.min(maxOrganizations + 15, 40),
-            20,
-        ),
+        // Budget must cover: seed page(s), enough pagination to discover
+        // candidates, and one request per profile actually kept, plus
+        // profiles that get discovered but rejected by the health-area or
+        // location filters. Previously capped at a flat 40 regardless of
+        // maxOrganizations, so a request for 20+ organizations could never
+        // be satisfied even if NGOBase had enough of them listed — the
+        // budget ran out on pagination before most profiles were ever
+        // fetched. Scales with maxOrganizations now, with a floor for
+        // small requests and a ceiling as a cost sanity check.
+        maxRequestsPerCrawl: Math.min(Math.max(maxOrganizations * 4, 40), 200),
 
         async requestHandler({ $, request, enqueueLinks, log }) {
             const url = request.loadedUrl ?? request.url;
@@ -220,18 +293,28 @@ export async function crawlNgoBase(
                     return;
                 }
 
-                const website = $('a[itemprop="url"]')
+                // All external profile links share the same itemprop; the
+                // previous version only excluded facebook.com when picking
+                // "website", so an Instagram/Twitter/LinkedIn link would
+                // have been mistakenly stored as the org's website. Now
+                // every known social domain is excluded from "website",
+                // and Instagram is captured properly instead of being
+                // silently dropped.
+                const profileLinks = $('a[itemprop="url"]')
                     .map((_, element) => $(element).attr('href'))
                     .get()
-                    .find(
-                        (href) =>
-                            href && !href.includes('facebook.com'),
-                    );
+                    .filter((href): href is string => Boolean(href));
 
-                const facebook = $('a[itemprop="url"]')
-                    .map((_, element) => $(element).attr('href'))
-                    .get()
-                    .find((href) => href?.includes('facebook.com'));
+                const facebook = profileLinks.find((href) => href.includes('facebook.com'));
+                const instagram = profileLinks.find((href) => href.includes('instagram.com'));
+                const website = profileLinks.find(
+                    (href) =>
+                        !href.includes('facebook.com') &&
+                        !href.includes('instagram.com') &&
+                        !href.includes('twitter.com') &&
+                        !href.includes('x.com') &&
+                        !href.includes('linkedin.com'),
+                );
 
                 const profileUrl = url;
 
@@ -249,6 +332,7 @@ export async function crawlNgoBase(
                     location: locationRecord,
                     website,
                     facebook,
+                    instagram,
                     sourceUrl: profileUrl,
                     sourceType: 'directory',
                     checkedAt: new Date().toISOString(),
@@ -336,10 +420,9 @@ export async function crawlNgoBase(
         },
     });
 
-    const startUrls =
-        healthArea.toLowerCase().trim() === 'maternal health'
-            ? [NIGERIA_MATERNAL_HEALTH_URL, startUrl]
-            : [startUrl];
+    const startUrls = healthAreaCategoryUrl
+        ? [healthAreaCategoryUrl, startUrl]
+        : [startUrl];
 
     await crawler.run(startUrls);
 

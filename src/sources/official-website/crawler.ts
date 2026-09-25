@@ -172,6 +172,106 @@ interface PageEvidence {
     serviceEvidence: Map<string, string>;
 }
 
+/**
+ * Builds the final {evidence, serviceClaims, access} shape from whatever
+ * pages were actually crawled. Pulled out of the main function so it can
+ * be called from both the success path and the catch block below — a
+ * crawler failure partway through (page 4 of 5 throwing, say) used to
+ * discard pages 1–3's results along with it; now it returns whatever was
+ * collected before the failure instead of nothing at all.
+ */
+function buildResult(
+    pageEvidence: PageEvidence[],
+    startUrl: string,
+    organizationName: string,
+    checkedAt: string,
+): {
+    evidence: EvidenceRecord[];
+    serviceClaims: ServiceClaim[];
+    access: ReturnType<typeof extractAccess>;
+} {
+    const evidence: EvidenceRecord[] = [];
+    const serviceEvidence = new Map
+    <   string,
+        EvidenceRecord[]
+    >();
+
+    for (const page of pageEvidence) {
+        if (page.url === startUrl) {
+            evidence.push({
+                claim: `${organizationName} has a publicly accessible official website.`,
+                sourceUrl: page.url,
+                sourceType: 'official_website',
+                sourceTier: 'official_website',
+                sourceTitle:
+                    page.title || organizationName,
+                checkedAt,
+                status: 'source_backed',
+            });
+        }
+
+        for (const service of page.services) {
+            const claim =
+                `${organizationName}'s official website contains publicly accessible information related to ${service}.`;
+
+            const record: EvidenceRecord = {
+                claim,
+                sourceUrl: page.url,
+                sourceType: 'official_website',
+                sourceTier: 'official_website',
+                sourceTitle:
+                    page.title || organizationName,
+                evidenceSnippet:
+                    page.serviceEvidence.get(service),
+                checkedAt,
+                status: 'source_backed',
+            };
+
+            const existing =
+                serviceEvidence.get(service) ?? [];
+
+            serviceEvidence.set(service, [
+                ...existing,
+                record,
+            ]);
+        }
+    }
+
+    const serviceClaims: ServiceClaim[] = [
+        ...serviceEvidence.entries(),
+    ].map(([service, serviceEvidenceRecords]) => ({
+        service,
+        claim: `${organizationName}'s official website contains publicly accessible information related to ${service}.`,
+        evidence: serviceEvidenceRecords,
+        evidenceStatus:
+            'source_backed' as EvidenceStatus,
+    }));
+
+    const access = pageEvidence.reduce(
+        (combined, page) => ({
+            phone: combined.phone ?? page.access.phone,
+            email: combined.email ?? page.access.email,
+            appointmentRequired:
+                combined.appointmentRequired ??
+                page.access.appointmentRequired,
+            referralRequired:
+                combined.referralRequired ??
+                page.access.referralRequired,
+            requirements:
+                combined.requirements.length > 0
+                    ? combined.requirements
+                    : page.access.requirements,
+        }),
+        { requirements: [] } as ReturnType<typeof extractAccess>,
+    );
+
+    return {
+        evidence,
+        serviceClaims,
+        access,
+    };
+}
+
 export async function crawlOfficialWebsiteEvidence(
     website: string,
     organizationName: string,
@@ -193,11 +293,18 @@ export async function crawlOfficialWebsiteEvidence(
 
     const origin = getWebsiteOrigin(startUrl);
 
-    const queueName = `caremap-official-${organizationName
+    const PREFIX = 'caremap-official-';
+    const timestampSuffix = `-${Date.now()}`;
+    const maxSlugLength = 63 - PREFIX.length - timestampSuffix.length;
+
+    const slug = organizationName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
-        .slice(0, 60)}-${Date.now()}`;
+        .slice(0, maxSlugLength)
+        .replace(/-+$/g, ''); // trim trailing '-' left by slicing mid-word
+
+    const queueName = `${PREFIX}${slug}${timestampSuffix}`;
 
     const requestQueue = await RequestQueue.open(queueName);
 
@@ -350,92 +457,15 @@ export async function crawlOfficialWebsiteEvidence(
         await crawler.run([
             ...pagesToVisit,
         ]);
-    } catch {
-        return {
-            evidence: [],
-            serviceClaims: [],
-            access: { requirements: [] },
-        };
+    } catch (err) {
+        // Previously this swallowed everything gathered so far and
+        // returned empty results even if 3 of 5 pages had already been
+        // crawled successfully before the failure. Now it builds the
+        // result from whatever pageEvidence was collected up to the point
+        // of failure, so a transient failure on one page doesn't erase
+        // real evidence found on the others.
+        return buildResult(pageEvidence, startUrl, organizationName, checkedAt);
     }
 
-    const evidence: EvidenceRecord[] = [];
-    const serviceEvidence = new Map<
-        string,
-        EvidenceRecord[]
-    >();
-
-    for (const page of pageEvidence) {
-        if (page.url === startUrl) {
-            evidence.push({
-                claim: `${organizationName} has a publicly accessible official website.`,
-                sourceUrl: page.url,
-                sourceType: 'official_website',
-                sourceTier: 'official_website',
-                sourceTitle:
-                    page.title || organizationName,
-                checkedAt,
-                status: 'source_backed',
-            });
-        }
-
-        for (const service of page.services) {
-            const claim =
-                `${organizationName}'s official website contains publicly accessible information related to ${service}.`;
-
-            const record: EvidenceRecord = {
-                claim,
-                sourceUrl: page.url,
-                sourceType: 'official_website',
-                sourceTier: 'official_website',
-                sourceTitle:
-                    page.title || organizationName,
-                evidenceSnippet:
-                    page.serviceEvidence.get(service),
-                checkedAt,
-                status: 'source_backed',
-            };
-
-            const existing =
-                serviceEvidence.get(service) ?? [];
-
-            serviceEvidence.set(service, [
-                ...existing,
-                record,
-            ]);
-        }
-    }
-
-    const serviceClaims: ServiceClaim[] = [
-        ...serviceEvidence.entries(),
-    ].map(([service, serviceEvidenceRecords]) => ({
-        service,
-        claim: `${organizationName}'s official website contains publicly accessible information related to ${service}.`,
-        evidence: serviceEvidenceRecords,
-        evidenceStatus:
-            'source_backed' as EvidenceStatus,
-    }));
-
-    const access = pageEvidence.reduce(
-        (combined, page) => ({
-            phone: combined.phone ?? page.access.phone,
-            email: combined.email ?? page.access.email,
-            appointmentRequired:
-                combined.appointmentRequired ??
-                page.access.appointmentRequired,
-            referralRequired:
-                combined.referralRequired ??
-                page.access.referralRequired,
-            requirements:
-                combined.requirements.length > 0
-                    ? combined.requirements
-                    : page.access.requirements,
-        }),
-        { requirements: [] } as ReturnType<typeof extractAccess>,
-    );
-
-    return {
-        evidence,
-        serviceClaims,
-        access,
-    };
+    return buildResult(pageEvidence, startUrl, organizationName, checkedAt);
 }

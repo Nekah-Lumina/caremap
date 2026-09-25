@@ -193,16 +193,18 @@ export async function normalizeNgoBaseRecord(
         websiteAccess = websiteResult.access;
     }
 
-    // Official-page lookup only runs when NGOBase already gave us a
-    // Facebook URL; mention search runs regardless, using the org's name.
-    // See src/sources/social/crawler.ts for the tier distinction.
+    // Official-page lookup runs whenever NGOBase gave us a Facebook and/or
+    // Instagram URL for this org; mention search runs regardless, using
+    // the org's name. See src/sources/social/crawler.ts for the tier
+    // distinction, the concurrency limiter, and the relevance filter that
+    // keeps mention search from attaching unrelated posts as evidence.
     const socialEvidence =
         includeEvidence && includeSocialEvidence
             ? await getSocialEvidence(
                   record.name,
                   checkedAt,
                   record.facebook,
-                  undefined,
+                  record.instagram,
               )
             : [];
 
