@@ -1,4 +1,4 @@
-import { CheerioCrawler } from 'crawlee';
+import { CheerioCrawler, log } from 'crawlee';
 
 export interface NgoBaseRecord {
     name: string;
@@ -91,6 +91,45 @@ const HEALTH_AREA_CATEGORY_URLS: Record<string, string> = {
     // its Rights work area instead, so results here skew toward
     // rights/advocacy orgs rather than pediatric-care providers.
     'child health': 'https://www.ngobase.org/cswa/NG/RGT.CH/child-rights-and-welfare-nigeria',
+
+    // NGOBase has a dedicated "Free Dental Care" sub work area under
+    // Health. Confirmed live: as of writing this page itself lists
+    // "Total Results = 0" for Nigeria, which is expected — the category
+    // exists in NGOBase's taxonomy, it's just sparsely populated for this
+    // country. That's exactly the case the no-results messaging below is
+    // for: a real, correctly-targeted search that legitimately finds
+    // nothing yet.
+    dental: 'https://www.ngobase.org/cswa/NG/HLT.DC/free-dental-care-nigeria',
+    'dental care': 'https://www.ngobase.org/cswa/NG/HLT.DC/free-dental-care-nigeria',
+    'dental health': 'https://www.ngobase.org/cswa/NG/HLT.DC/free-dental-care-nigeria',
+    'oral health': 'https://www.ngobase.org/cswa/NG/HLT.DC/free-dental-care-nigeria',
+
+    // NGOBase has a dedicated "Free Eye Care" sub work area under Health.
+    // Confirmed live against the national Health listing.
+    'eye care': 'https://www.ngobase.org/cswa/NG/HLT.EC/free-eye-care-nigeria',
+    vision: 'https://www.ngobase.org/cswa/NG/HLT.EC/free-eye-care-nigeria',
+    ophthalmology: 'https://www.ngobase.org/cswa/NG/HLT.EC/free-eye-care-nigeria',
+
+    // No standalone "Rehabilitation" category exists in NGOBase's
+    // taxonomy. "Health Care - Other services" is the closest real
+    // catch-all Health category (as opposed to "Disability Support",
+    // which is about advocacy/welfare for people with disabilities more
+    // broadly rather than rehab services specifically) — results here
+    // will skew toward general health-service orgs, some of which will
+    // not actually offer rehabilitation/physiotherapy.
+    rehabilitation: 'https://www.ngobase.org/cswa/NG/HLT.OT/health-care---other-services-nigeria',
+    'physical therapy': 'https://www.ngobase.org/cswa/NG/HLT.OT/health-care---other-services-nigeria',
+    physiotherapy: 'https://www.ngobase.org/cswa/NG/HLT.OT/health-care---other-services-nigeria',
+
+    // No standalone "Laboratory Services" category exists either.
+    // Same "Health Care - Other services" catch-all as rehabilitation
+    // above, for the same reason — it's the closest real category, not an
+    // exact match, so results should be treated as a starting point that
+    // still needs the alias/text filtering below to narrow down.
+    'laboratory services': 'https://www.ngobase.org/cswa/NG/HLT.OT/health-care---other-services-nigeria',
+    laboratory: 'https://www.ngobase.org/cswa/NG/HLT.OT/health-care---other-services-nigeria',
+    'lab services': 'https://www.ngobase.org/cswa/NG/HLT.OT/health-care---other-services-nigeria',
+    diagnostics: 'https://www.ngobase.org/cswa/NG/HLT.OT/health-care---other-services-nigeria',
 };
 
 interface HealthAreaAliasConfig {
@@ -167,6 +206,68 @@ const HEALTH_AREA_ALIASES: Record<string, HealthAreaAliasConfig> = {
             'psychological',
         ],
     },
+    dental: {
+        strong: [
+            'dental care',
+            'dental health',
+            'oral health',
+            'dentistry',
+            'dental clinic',
+            'dental treatment',
+        ],
+        weak: [
+            'dental',
+            'teeth',
+            'tooth',
+            'oral',
+        ],
+    },
+    'eye care': {
+        strong: [
+            'eye care',
+            'eye clinic',
+            'eye treatment',
+            'ophthalmology',
+            'ophthalmic',
+            'visually impaired',
+            'cataract',
+        ],
+        weak: [
+            'eye',
+            'eyes',
+            'vision',
+            'blind',
+        ],
+    },
+    rehabilitation: {
+        strong: [
+            'rehabilitation',
+            'physiotherapy',
+            'physical therapy',
+            'occupational therapy',
+            'speech therapy',
+        ],
+        weak: [
+            'rehab',
+            'therapy',
+            'mobility support',
+        ],
+    },
+    'laboratory services': {
+        strong: [
+            'laboratory services',
+            'diagnostic laboratory',
+            'medical laboratory',
+            'pathology lab',
+            'diagnostic testing',
+        ],
+        weak: [
+            'laboratory',
+            'lab',
+            'diagnostics',
+            'testing',
+        ],
+    },
 };
 
 function matchesHealthArea(
@@ -191,6 +292,109 @@ function matchesHealthArea(
     }
 
     return config.weak.some((term) => fullText.includes(term));
+}
+
+/**
+ * Health areas that map to a real, dedicated NGOBase category (as opposed
+ * to a closest-match fallback like "Health Care - Other services"). Used
+ * purely to make the no-results message more honest about how targeted
+ * the search actually was.
+ */
+const EXACT_CATEGORY_HEALTH_AREAS = new Set([
+    'maternal health',
+    'mental health',
+    'population welfare',
+    'wash',
+    'disability support',
+    'malaria',
+    'hiv',
+    'hiv aids',
+    'hiv/aids',
+    'dental',
+    'dental care',
+    'dental health',
+    'oral health',
+    'eye care',
+    'vision',
+    'ophthalmology',
+]);
+
+/** Suggested nearby health areas to offer when a search comes back empty. */
+const RELATED_HEALTH_AREA_SUGGESTIONS: Record<string, string[]> = {
+    dental: ['health care - other services (broader)', 'disability support'],
+    'eye care': ['disability support', 'health care - other services (broader)'],
+    rehabilitation: ['disability support', 'health care - other services'],
+    'laboratory services': ['health care - other services', 'malaria'],
+    'reproductive health': ['maternal health', 'family planning'],
+    'family planning': ['maternal health', 'population welfare'],
+    'child health': ['maternal health'],
+};
+
+/**
+ * Builds a well-formatted, human-readable summary for the case where a
+ * health-area + location search legitimately returns zero organizations.
+ *
+ * This is deliberately NOT treated as an error: a NGOBase category can be
+ * real and correctly targeted and still be sparsely populated for a given
+ * country (e.g. "Free Dental Care" in Nigeria currently lists 0 results
+ * nationally). The message says that plainly instead of leaving the
+ * caller to interpret a bare empty array, and offers concrete next steps
+ * rather than a dead end — consistent with CAREMAP's evidence model,
+ * where "not publicly verified" never means "does not exist".
+ *
+ * Exported so an Actor entry point (e.g. main.ts) can also use it to push
+ * a single informational record to the dataset instead of leaving the
+ * run's output empty and unexplained.
+ */
+export function buildNoResultsMessage(
+    healthArea: string,
+    location: string,
+    searchedUrls: string[] = [],
+): string {
+    const normalizedHealthArea = healthArea.toLowerCase().trim();
+    const isExactCategory = EXACT_CATEGORY_HEALTH_AREAS.has(normalizedHealthArea);
+    const suggestions = RELATED_HEALTH_AREA_SUGGESTIONS[normalizedHealthArea] ?? [];
+
+    const lines: string[] = [];
+
+    lines.push(`No NGOs found for "${healthArea}" in ${location}.`);
+    lines.push('');
+    lines.push(
+        'This does not mean no organizations offering this service exist — ' +
+            'only that CAREMAP could not verify a public NGOBase listing ' +
+            'matching both filters for this run. Absence of a listing is ' +
+            'reported as "not publicly verified", never as proof the ' +
+            'service does not exist.',
+    );
+
+    if (!isExactCategory) {
+        lines.push('');
+        lines.push(
+            `Note: NGOBase has no dedicated "${healthArea}" category, so this ` +
+                'search used the closest available category plus text ' +
+                'matching rather than an exact tag — results may be sparser ' +
+                'or noisier than for a health area with a dedicated category.',
+        );
+    }
+
+    lines.push('');
+    lines.push('What to try next:');
+    lines.push('  • Broaden the location — try the full state instead of a city');
+    lines.push('  • Increase maxOrganizations to widen the pagination search');
+    if (suggestions.length > 0) {
+        lines.push(`  • Try a related health area: ${suggestions.join(', ')}`);
+    }
+    lines.push('  • Re-run later — directory listings change over time');
+
+    lines.push('');
+    lines.push(`Health area searched: ${healthArea}`);
+    lines.push(`Location searched: ${location}`);
+    if (searchedUrls.length > 0) {
+        lines.push(`Source page(s) checked: ${searchedUrls.join(', ')}`);
+    }
+    lines.push(`Checked at: ${new Date().toISOString()}`);
+
+    return lines.join('\n');
 }
 
 export async function crawlNgoBase(
@@ -425,6 +629,14 @@ export async function crawlNgoBase(
         : [startUrl];
 
     await crawler.run(startUrls);
+
+    if (records.length === 0) {
+        // A well-formatted, informative log entry instead of silently
+        // finishing with an empty result set. If the Actor's entry point
+        // wants to surface this in the dataset too, it can call
+        // buildNoResultsMessage() itself and push it as a record.
+        log.info(buildNoResultsMessage(healthArea, location, startUrls));
+    }
 
     return records.slice(0, maxOrganizations);
 }
