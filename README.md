@@ -162,6 +162,20 @@ Exact results depend on the public information
 available at the time of the run.
 ```
 
+## Screenshots
+
+### Actor input
+![CAREMAP Actor input](screenshots/caremap-input.png)
+
+### Successful run
+![CAREMAP successful run](screenshots/caremap-run-success.png)
+
+### Structured output
+![CAREMAP structured output](screenshots/caremap-output.png)
+
+### Published Actor
+![CAREMAP published Actor](screenshots/caremap-actor-page.png)
+
 Actor inputs
 healthArea
 
